@@ -1,29 +1,49 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id       Int     @id @default(autoincrement())
-  email    String  @unique
-  password String
-  entries  Entry[]
+generator client {
+  provider = "prisma-client-js"
 }
 
-model Entry {
-  id       Int      @id @default(autoincrement())
-  name     String
-  date     DateTime
-  comment  String
-  imageUrl String
-  lat      Float
-  lng      Float
-  cityTag  String
-  foodTag  String
-  user     User     @relation(fields: [userId], references: [id])
-  userId   Int
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  password  String
+  role      String   @default("USER")
+  spots     Spot[] // 投稿したスポット
+  createdAt DateTime @default(now())
+}
+
+model Spot {
+  id          String    @id @default(cuid())
+  title       String // 店名
+  imageUrl    String // 画像 URL
+  comment     String // 一言コメント
+  description String?
+  createdAt   DateTime  @default(now())
+  latitude    Float // 緯度
+  longitude   Float // 経度
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  tags        SpotTag[] // 多対多: スポット⇔タグ
+}
+
+model Tag {
+  id        String    @id @default(cuid())
+  name      String    @unique // カテゴリ or 市区町村
+  spotLinks SpotTag[] // SpotTag経由でスポットと紐付け
+}
+
+model SpotTag {
+  spot   Spot   @relation(fields: [spotId], references: [id])
+  spotId String
+  tag    Tag    @relation(fields: [tagId], references: [id])
+  tagId  String
+
+  @@id([spotId, tagId])
+  @@index([tagId])
 }
