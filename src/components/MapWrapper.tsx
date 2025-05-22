@@ -9,30 +9,44 @@ import SpotInfo from "./SpotInfo";
 const LeafletMap = dynamic(() => import("./LeafletMap"), { ssr: false });
 
 interface MapWrapperProps {
+  /** サーバーコンポーネントなどから渡される初期データ */
   spots: SpotType[];
   canAdd: boolean;
-  onReload: () => void;
+  /** 親コンポーネントが必要なら呼び出し */
+  onReload?: () => void;
 }
 
 export default function MapWrapper({
-  spots,
+  spots: initialSpots,
   canAdd,
   onReload,
 }: MapWrapperProps) {
-  // --- state ---
+  // --- spots をローカル state で管理して API から全フィールドを取得する ---
+  const [spots, setSpots] = useState<SpotType[]>(initialSpots);
   const [mode, setMode] = useState<"none" | "add" | "info">("none");
   const [currentLatLng, setCurrentLatLng] =
     useState<{ lat: number; lng: number } | null>(null);
   const [currentSpot, setCurrentSpot] = useState<SpotType | null>(null);
   const [registerMode, setRegisterMode] = useState(false);
 
-  // --- reset on spots change or registerMode off ---
+  // 初回マウント時に API から全フィールドを含むスポット一覧を取得
   useEffect(() => {
+    fetch("/api/spots")
+      .then((res) => res.json())
+      .then((data: SpotType[]) => setSpots(data))
+      .catch(console.error);
+  }, []);
+
+  // props.spots が変わったらローカル state に反映
+  useEffect(() => {
+    setSpots(initialSpots);
+    // モーダルをリセット
     setMode("none");
     setCurrentLatLng(null);
     setCurrentSpot(null);
-  }, [spots]);
+  }, [initialSpots]);
 
+  // 登録モード切り替え時にリセット
   useEffect(() => {
     if (!registerMode) {
       setMode("none");
@@ -41,16 +55,22 @@ export default function MapWrapper({
     }
   }, [registerMode]);
 
-  // --- debug ---
+  // デバッグ: currentSpot の内容
   useEffect(() => {
-    console.log("[MapWrapper] canAdd:", canAdd);
-    console.log("[MapWrapper] registerMode:", registerMode);
-    console.log("[MapWrapper] mode:", mode);
-  }, [canAdd, registerMode, mode]);
+    if (currentSpot) console.log("🌟 currentSpot:", currentSpot);
+  }, [currentSpot]);
+
+  // SpotForm 成功後にも再取得するユーティリティ
+  const handleReload = () => {
+    fetch("/api/spots")
+      .then((res) => res.json())
+      .then((data: SpotType[]) => setSpots(data))
+      .catch(console.error)
+      .finally(() => onReload?.());
+  };
 
   return (
     <div className="relative w-full h-full">
-      {/* 登録モード切替ボタン */}
       {canAdd ? (
         <button
           className="absolute top-2 left-2 z-50 bg-white border px-3 py-1 rounded shadow hover:bg-gray-100 text-sm"
@@ -64,7 +84,6 @@ export default function MapWrapper({
         </div>
       )}
 
-      {/* 地図レイヤー（背面） */}
       <div className="w-full h-full z-0">
         <LeafletMap
           spots={spots}
@@ -77,6 +96,7 @@ export default function MapWrapper({
               : undefined
           }
           onMarkerClick={(spot) => {
+            console.log("🔔 onMarkerClick:", spot);
             if (registerMode) {
               setCurrentLatLng({ lat: spot.latitude, lng: spot.longitude });
               setMode("add");
@@ -99,7 +119,7 @@ export default function MapWrapper({
               initialLng={currentLatLng.lng}
               onSuccess={() => {
                 setMode("none");
-                onReload();
+                handleReload();
               }}
               onCancel={() => setMode("none")}
             />
