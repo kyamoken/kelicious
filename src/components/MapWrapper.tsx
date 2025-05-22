@@ -19,22 +19,20 @@ export default function MapWrapper({
   canAdd,
   onReload,
 }: MapWrapperProps) {
-  // モード管理: none/info/add
+  // --- state ---
   const [mode, setMode] = useState<"none" | "add" | "info">("none");
-  const [currentLatLng, setCurrentLatLng] = useState<{ lat: number; lng: number } | null>(null);
+  const [currentLatLng, setCurrentLatLng] =
+    useState<{ lat: number; lng: number } | null>(null);
   const [currentSpot, setCurrentSpot] = useState<SpotType | null>(null);
-
-  // 登録モードのトグル
   const [registerMode, setRegisterMode] = useState(false);
 
-  // spots が切り替わったらリセット
+  // --- reset on spots change or registerMode off ---
   useEffect(() => {
     setMode("none");
     setCurrentLatLng(null);
     setCurrentSpot(null);
   }, [spots]);
 
-  // 登録モードをオフにしたときは form/info を閉じる
   useEffect(() => {
     if (!registerMode) {
       setMode("none");
@@ -43,59 +41,80 @@ export default function MapWrapper({
     }
   }, [registerMode]);
 
+  // --- debug ---
+  useEffect(() => {
+    console.log("[MapWrapper] canAdd:", canAdd);
+    console.log("[MapWrapper] registerMode:", registerMode);
+    console.log("[MapWrapper] mode:", mode);
+  }, [canAdd, registerMode, mode]);
+
   return (
     <div className="relative w-full h-full">
-      {canAdd && (
+      {/* 登録モード切替ボタン */}
+      {canAdd ? (
         <button
-          className="absolute top-2 left-2 z-20 bg-white border px-3 py-1 rounded shadow-sm hover:bg-gray-100"
-          onClick={() => setRegisterMode((prev) => !prev)}
+          className="absolute top-2 left-2 z-50 bg-white border px-3 py-1 rounded shadow hover:bg-gray-100 text-sm"
+          onClick={() => setRegisterMode((f) => !f)}
         >
-          {registerMode ? "登録モード: ON" : "登録モード: OFF"}
+          登録モード: {registerMode ? "ON" : "OFF"}
         </button>
+      ) : (
+        <div className="absolute top-2 left-2 z-50 p-1 bg-white border rounded text-sm text-red-600">
+          🛑 登録権限なし
+        </div>
       )}
 
-      <LeafletMap
-        spots={spots}
-        // 登録モードのときだけクリックで追加座標を設定
-        onMapClick={
-          registerMode
-            ? (lat, lng) => {
-                setCurrentLatLng({ lat, lng });
-                setMode("add");
-              }
-            : undefined
-        }
-        // マーカークリックも登録モードなら追加、そうでなければ情報表示
-        onMarkerClick={(spot) => {
-          if (registerMode) {
-            setCurrentLatLng({ lat: spot.latitude, lng: spot.longitude });
-            setMode("add");
-          } else {
-            setCurrentSpot(spot);
-            setMode("info");
+      {/* 地図レイヤー（背面） */}
+      <div className="w-full h-full z-0">
+        <LeafletMap
+          spots={spots}
+          onMapClick={
+            registerMode
+              ? (lat, lng) => {
+                  setCurrentLatLng({ lat, lng });
+                  setMode("add");
+                }
+              : undefined
           }
-        }}
-        // 登録モード中はドラッグなどを無効化
-        disableDrag={registerMode}
-      />
-
-      {mode === "add" && currentLatLng && (
-        <SpotForm
-          initialLat={currentLatLng.lat}
-          initialLng={currentLatLng.lng}
-          onSuccess={() => {
-            setMode("none");
-            onReload();
+          onMarkerClick={(spot) => {
+            if (registerMode) {
+              setCurrentLatLng({ lat: spot.latitude, lng: spot.longitude });
+              setMode("add");
+            } else {
+              setCurrentSpot(spot);
+              setMode("info");
+            }
           }}
-          onCancel={() => setMode("none")}
+          disableDrag={registerMode}
         />
+      </div>
+
+      {/* SpotForm モーダル */}
+      {mode === "add" && currentLatLng && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black opacity-50" />
+          <div className="relative bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <SpotForm
+              initialLat={currentLatLng.lat}
+              initialLng={currentLatLng.lng}
+              onSuccess={() => {
+                setMode("none");
+                onReload();
+              }}
+              onCancel={() => setMode("none")}
+            />
+          </div>
+        </div>
       )}
 
+      {/* SpotInfo モーダル */}
       {mode === "info" && currentSpot && (
-        <SpotInfo
-          spot={currentSpot}
-          onClose={() => setMode("none")}
-        />
+        <div className="fixed inset-0 z-60 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black opacity-50" />
+          <div className="relative bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <SpotInfo spot={currentSpot} onClose={() => setMode("none")} />
+          </div>
+        </div>
       )}
     </div>
   );

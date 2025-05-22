@@ -19,15 +19,14 @@ export default function SpotForm({
   onSuccess,
   onCancel,
 }: Props) {
-  // フォーム内で使う緯度経度はローカルステートに保持
   const [lat, setLat] = useState<number>(initialLat);
   const [lng, setLng] = useState<number>(initialLng);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
   const [comment, setComment] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
-  // initialLat/initialLng が変わったらステートを更新
   useEffect(() => {
     setLat(initialLat);
     setLng(initialLng);
@@ -35,63 +34,119 @@ export default function SpotForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUploading(true);
+
     try {
+      // 画像ファイルが選択されていればアップロード
+      let imageUrl: string | null = null;
+      if (file) {
+        const formData = new FormData();
+        formData.append("image", file);
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (!uploadRes.ok) {
+          throw new Error("画像アップロード失敗");
+        }
+        const { url } = await uploadRes.json();
+        imageUrl = url;
+      }
+
+      // スポット登録APIへポスト
       const res = await fetch("/api/spots", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, imageUrl, comment, lat, lng }),
+        body: JSON.stringify({
+          title,
+          description,
+          comment,
+          latitude: lat,
+          longitude: lng,
+          imageUrl,
+        }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
       onSuccess?.();
     } catch (err: any) {
       console.error(err);
       alert("登録に失敗しました: " + err.message);
+    } finally {
+      setUploading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2 bg-white p-4 shadow-lg">
-      <h2 className="text-lg font-bold">新しいスポットを追加</h2>
-      <p>座標: {lat.toFixed(4)}, {lng.toFixed(4)}</p>
-      <input
-        className="w-full border p-1"
-        placeholder="タイトル"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        required
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black opacity-40"
+        onClick={onCancel}
       />
-      <input
-        className="w-full border p-1"
-        placeholder="画像URL"
-        value={imageUrl}
-        onChange={(e) => setImageUrl(e.target.value)}
-        required
-      />
-      <input
-        className="w-full border p-1"
-        placeholder="一言コメント"
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        required
-      />
-      <textarea
-        className="w-full border p-1"
-        placeholder="詳細説明 (任意)"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
-      <div className="flex space-x-2">
-        <button type="submit" className="bg-blue-500 text-white px-4 py-2">
-          登録
-        </button>
-        <button
-          type="button"
-          className="bg-gray-300 px-4 py-2"
-          onClick={onCancel}
-        >
-          キャンセル
-        </button>
+      <div className="relative bg-white w-full max-w-md p-6 rounded-lg shadow-lg space-y-4">
+        <h2 className="text-xl font-semibold">新しいスポットを追加</h2>
+        <p className="text-sm text-gray-600">
+          座標: {lat.toFixed(4)}, {lng.toFixed(4)}
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium">タイトル</label>
+            <input
+              type="text"
+              className="w-full border rounded px-2 py-1"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">画像ファイル</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                if (e.target.files?.[0]) setFile(e.target.files[0]);
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">一言コメント</label>
+            <input
+              type="text"
+              className="w-full border rounded px-2 py-1"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">詳細説明 (任意)</label>
+            <textarea
+              className="w-full border rounded px-2 py-1"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end space-x-2 pt-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+              disabled={uploading}
+            >
+              キャンセル
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              disabled={uploading}
+            >
+              {uploading ? "登録中..." : "登録"}
+            </button>
+          </div>
+        </form>
       </div>
-    </form>
+    </div>
   );
 }

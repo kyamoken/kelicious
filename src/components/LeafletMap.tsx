@@ -87,6 +87,7 @@ export default function LeafletMap({
       {onMapClick && <MapClickHandler onMapClick={onMapClick} />}
 
       {/* スポット表示 */}
+
       {spots.map((s) => (
         <Marker
           key={s.id}
@@ -97,5 +98,6 @@ export default function LeafletMap({
         />
       ))}
     </MapContainer>
+
   );
 }

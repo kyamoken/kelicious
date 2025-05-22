@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { PrismaClient } from "@prisma/client";
 
+export const runtime = "nodejs";
+
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
@@ -12,15 +14,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // リクエストボディをパース
-  const { title, description, imageUrl, comment, lat, lng } = await request.json();
+  // リクエストボディをパース（latitude/longitude に変更）
+  const { title, description, imageUrl, comment, latitude, longitude } =
+    await request.json();
+
   // バリデーション
   if (
     typeof title !== "string" ||
-    typeof imageUrl !== "string" ||
     typeof comment !== "string" ||
-    typeof lat !== "number" ||
-    typeof lng !== "number"
+    typeof latitude !== "number" ||
+    typeof longitude !== "number" ||
+    (imageUrl !== undefined && typeof imageUrl !== "string") ||
+    (description !== undefined && typeof description !== "string")
   ) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
@@ -30,10 +35,10 @@ export async function POST(request: Request) {
       data: {
         title,
         description: description || "",
-        imageUrl,
+        imageUrl: imageUrl || "",
         comment,
-        latitude: lat,
-        longitude: lng,
+        latitude,
+        longitude,
         user: {
           connect: { email: session.user.email },
         },
