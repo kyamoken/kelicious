@@ -10,7 +10,8 @@ if (!process.env.NEXTAUTH_SECRET) {
   throw new Error("NEXTAUTH_SECRET を .env に設定してください");
 }
 
-export const authOptions: NextAuthOptions = {
+// export を外して内部だけで使う
+const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Email/Password",
@@ -41,10 +42,9 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  // `!` で undefined を除外
   secret: process.env.NEXTAUTH_SECRET!,
 };
 
-// GET/POST をハンドラとしてエクスポート
+// NextAuth ハンドラを生成し、GET/POST としてのみ export
 const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
