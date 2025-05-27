@@ -10,7 +10,12 @@ type Spot = {
   longitude: number;
 };
 
-export default function ClientHome({ spots }: { spots: Spot[] }) {
+interface ClientHomeProps {
+  spots: Spot[];
+  canAdd: boolean;
+}
+
+export default function ClientHome({ spots, canAdd }: ClientHomeProps) {
   const router = useRouter();
 
   return (
@@ -19,7 +24,7 @@ export default function ClientHome({ spots }: { spots: Spot[] }) {
       <div className="w-full h-full">
         <MapWrapper
           spots={spots}
-          canAdd={true}
+          canAdd={canAdd}
           onReload={() => router.refresh()}
         />
       </div>
