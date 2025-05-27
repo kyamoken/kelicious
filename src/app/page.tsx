@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import ClientHome from "./ClientHome";
 import { getServerSession } from "next-auth";
-import { authOptions } from "./api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 export const revalidate = 0;
 
