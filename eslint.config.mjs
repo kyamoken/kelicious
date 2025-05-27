@@ -4,20 +4,18 @@ import { FlatCompat } from "@eslint/eslintrc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const compat = new FlatCompat({ baseDirectory: __dirname });
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
+// eslint-disable-next-line import/no-anonymous-default-export
 export default [
   // Next.js の推奨設定を flat 形式で読み込む
   ...compat.extends(
-    "next",                    // next/core-web-vitals 以前に必ず next を
-    "next/core-web-vitals",    // コア Web バイタル向け lint ルール
-    "next/typescript"          // TypeScript を使っていれば
+    "next",                   // まず必ず next 本体を
+    "next/core-web-vitals",   // コア Web バイタル向け
+    "next/typescript"         // TypeScript を使っていれば
   ),
   {
-    // ここにプロジェクト固有のルールを追加
+    // プロジェクト固有の追加ルールがあれば
     rules: {
       // 例: セミコロンを必須にする
       // "semi": ["error", "always"]
