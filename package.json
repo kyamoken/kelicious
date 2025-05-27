@@ -12,6 +12,7 @@
     "create-user": "tsx scripts/create-user.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.8",
     "@tailwindcss/cli": "^4.1.6",
     "bcrypt": "^6.0.0",
     "leaflet": "^1.9.4",
