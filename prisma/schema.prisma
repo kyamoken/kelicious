@@ -1,6 +1,11 @@
+// ─────────────────────────────────────────────────────
+// Prisma schema for MySQL
+// ─────────────────────────────────────────────────────
+
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
+  // previewFeatures = ["referentialIntegrity"] // Prisma 4.14 以降、有効にしたい機能があれば
 }
 
 generator client {
@@ -15,18 +20,18 @@ model User {
   password  String
   role      String   @default("USER")
   spots     Spot[] // 投稿したスポット
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.DateTime(6)
 }
 
 model Spot {
   id          String    @id @default(cuid())
-  title       String // 店名
-  imageUrl    String // 画像 URL
-  comment     String // 一言コメント
+  title       String
+  imageUrl    String
+  comment     String
   description String?
-  createdAt   DateTime  @default(now())
-  latitude    Float // 緯度
-  longitude   Float // 経度
+  createdAt   DateTime  @default(now()) @db.DateTime(6)
+  latitude    Float
+  longitude   Float
   user        User      @relation(fields: [userId], references: [id])
   userId      String
   tags        SpotTag[] // 多対多: スポット⇔タグ
@@ -34,7 +39,7 @@ model Spot {
 
 model Tag {
   id        String    @id @default(cuid())
-  name      String    @unique // カテゴリ or 市区町村
+  name      String    @unique
   spotLinks SpotTag[] // SpotTag経由でスポットと紐付け
 }
 
