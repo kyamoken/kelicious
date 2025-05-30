@@ -76,13 +76,18 @@ export default function MapWrapper({
       .finally(() => onReload?.());
   };
 
+  // comment OR description にマッチするように変更
   const filteredSpots = useMemo(() => {
     if (!activeFilter) return spots;
-    return spots.filter((s) =>
-      (s.comment ?? "").toLowerCase().includes(activeFilter.toLowerCase())
+    const lower = activeFilter.toLowerCase();
+    return spots.filter(
+      (s) =>
+        (s.comment ?? "").toLowerCase().includes(lower) ||
+        (s.description ?? "").toLowerCase().includes(lower)
     );
   }, [spots, activeFilter]);
 
+  // tagCounts は comment の文字列ごとの件数を集計
   const tagCounts = useMemo<Record<string, number>>(() => {
     const counts: Record<string, number> = {};
     spots.forEach((s) => {
@@ -93,6 +98,7 @@ export default function MapWrapper({
     return counts;
   }, [spots]);
 
+  // トップ3を取る
   const suggestions = useMemo(
     () =>
       Object.entries(tagCounts)
@@ -102,28 +108,37 @@ export default function MapWrapper({
     [tagCounts]
   );
 
-  const filteredSuggestions = useMemo(
-    () =>
-      suggestions.filter((s) =>
-        s.tag.toLowerCase().includes(filterText.toLowerCase())
-      ),
-    [suggestions, filterText]
-  );
+  // 空入力時はトップ3、入力時は部分一致＋独自キーワード表示
+  const filteredSuggestions = useMemo(() => {
+    const text = filterText.trim().toLowerCase();
+
+    // 入力が空ならトップ3
+    if (!text) {
+      return suggestions;
+    }
+
+    // description マッチ件数をカウント
+    const customCount = spots.filter((s) =>
+      (s.description ?? "").toLowerCase().includes(text)
+    ).length;
+
+    // デフォルト候補の部分一致
+    const matched = suggestions.filter((s) =>
+      s.tag.toLowerCase().includes(text)
+    );
+
+    // description マッチ件数があれば独自候補を追加
+    if (customCount > 0) {
+      return [...matched, { tag: filterText, count: customCount }];
+    }
+
+    return matched;
+  }, [filterText, suggestions, spots]);
 
   return (
     <div className="relative flex flex-col h-full w-full">
-      {/* ヘッダー: 横並びコンパクト, モバイル時に検索バー小さく */}
-      <header
-        className="
-          absolute inset-x-2 top-4
-          rounded-lg shadow-lg
-          px-3 py-2
-          flex items-center justify-between
-          space-x-3
-          z-10
-          bg-[rgba(240,132,26,0.9)]
-        "
-      >
+      {/* ヘッダー */}
+      <header className="absolute inset-x-2 top-4 rounded-lg shadow-lg px-3 py-2 flex items-center justify-between space-x-3 z-10 bg-[rgba(240,132,26,0.9)]">
         {/* ロゴ＋タイトル */}
         <div className="flex items-center space-x-2 flex-shrink-0">
           <img
@@ -145,22 +160,11 @@ export default function MapWrapper({
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder="絞り込み"
-            className="
-              h-6 sm:h-8
-              px-1 sm:px-2
-              text-xs sm:text-sm
-              rounded
-              text-black
-              flex-shrink-0
-              w-16 sm:w-32 md:w-48
-            "
+            className="h-6 sm:h-8 px-1 sm:px-2 text-xs sm:text-sm rounded text-black flex-shrink-0 w-16 sm:w-32 md:w-48"
             style={{ backgroundColor: "#FFD08A" }}
           />
           {isFocused && filteredSuggestions.length > 0 && (
-            <ul
-              className="absolute top-full right-0 mt-1 w-40 sm:w-48 shadow-lg rounded-lg overflow-auto z-20"
-              style={{ backgroundColor: "#FDEFCD" }}
-            >
+            <ul className="absolute top-full right-0 mt-1 w-40 sm:w-48 shadow-lg rounded-lg overflow-auto z-20 bg-[rgba(253,239,205,1)]">
               {filteredSuggestions.map(({ tag, count }) => (
                 <li key={tag}>
                   <button
@@ -179,14 +183,7 @@ export default function MapWrapper({
           )}
           <button
             onClick={() => setActiveFilter(filterText)}
-            className="
-              h-6 sm:h-8
-              px-1 sm:px-3
-              text-xs sm:text-sm
-              font-semibold
-              rounded
-              text-white
-            "
+            className="h-6 sm:h-8 px-1 sm:px-3 text-xs sm:text-sm font-semibold rounded text-white"
             style={{ backgroundColor: "#4CACB9" }}
           >
             検索
